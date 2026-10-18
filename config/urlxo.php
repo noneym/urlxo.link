@@ -4,6 +4,9 @@ return [
     // Host the short links are served from (no scheme).
     'short_domain' => env('SHORT_DOMAIN', 'urlxo.link'),
 
+    // Public source repository, linked from the site.
+    'github_url' => env('URLXO_GITHUB_URL', 'https://github.com/noneym/urlxo.link'),
+
     'code_length' => (int) env('URLXO_CODE_LENGTH', 6),
 
     // Resolved link payloads are cached in Redis for this many seconds.

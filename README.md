@@ -1,5 +1,9 @@
 # urlxo.link
 
+**Live at [https://urlxo.link](https://urlxo.link). Free to use.**
+
+Paste a link on the homepage to shorten it, no account needed. Create a free account to edit your links, see click stats and get API keys ([API docs](https://urlxo.link/docs)).
+
 URL shortener with click analytics and a REST API. Laravel 12, Livewire 3, Tailwind v4, MariaDB and Redis.
 
 ## Features

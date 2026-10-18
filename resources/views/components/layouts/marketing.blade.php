@@ -16,6 +16,7 @@
             <a href="{{ route('home') }}#faq" class="nav-link">FAQ</a>
         </div>
         <div class="flex items-center gap-2">
+            <a href="{{ config('urlxo.github_url') }}" class="nav-link inline-flex items-center gap-1.5" target="_blank" rel="noopener" aria-label="urlxo on GitHub">@svg('phosphor-github-logo', 'h-[18px] w-[18px]')<span class="hidden lg:inline">GitHub</span></a>
             @auth
                 <a href="{{ route('links.index') }}" class="btn-ink btn-sm">Open dashboard</a>
             @else
@@ -34,13 +35,14 @@
     <div class="wrap grid gap-10 py-14 md:grid-cols-[1.4fr_1fr_1fr]">
         <div>
             <x-logo class="h-7 text-ink" />
-            <p class="mt-4 max-w-[38ch] text-[14px] text-muted">Short links, click analytics and a REST API. Built and hosted in the EU.</p>
+            <p class="mt-4 max-w-[38ch] text-[14px] text-muted">Short links, click analytics and a REST API. Free to use, source code on GitHub.</p>
         </div>
         <div class="grid gap-2 text-[14px]">
             <span class="font-medium text-ink">Product</span>
             <a href="{{ route('home') }}#features" class="text-muted hover:text-ink">Features</a>
             <a href="{{ route('docs') }}" class="text-muted hover:text-ink">API docs</a>
             <a href="{{ route('login') }}" class="text-muted hover:text-ink">Sign in</a>
+            <a href="{{ config('urlxo.github_url') }}" class="inline-flex items-center gap-1.5 text-muted hover:text-ink" target="_blank" rel="noopener">@svg('phosphor-github-logo', 'h-4 w-4') Source on GitHub</a>
         </div>
         <div class="grid gap-2 text-[14px]">
             <span class="font-medium text-ink">Legal</span>
