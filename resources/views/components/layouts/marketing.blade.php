@@ -51,7 +51,7 @@
             <a href="mailto:abuse@urlxo.link" class="text-muted hover:text-ink">Report abuse</a>
         </div>
     </div>
-    <div class="wrap pb-10 text-[13px] text-muted">© {{ date('Y') }} urlxo</div>
+    <div class="wrap flex flex-wrap items-center justify-between gap-2 pb-10 text-[13px] text-muted"><span>© {{ date('Y') }} urlxo</span><span>Powered by <a href="https://xofactory.com" rel="noopener" class="hover:text-ink">xofactory</a></span></div>
 </footer>
 @livewireScripts
 </body>
