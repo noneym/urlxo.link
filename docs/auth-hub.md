@@ -60,6 +60,22 @@ Or over HTTP on the hub host (bearer `AUTH_HUB_ADMIN_TOKEN`):
 
 `consume_url` must be https (http only for localhost / `.test`).
 
+## Sites on many (rotating) domains
+
+One codebase and database behind many domains registers once with
+`--signed` (`signed_consume: true`). On each sign-in the site sends the consume
+URL on the domain the user is on, signed with its secret:
+
+```
+/start?site=<slug>&nonce=<n>&return=/path&consume=https://<current-host>/auth/hub&ts=<unix>&sig=<sig>
+sig = base64url(HMAC-SHA256(secret, "<slug>\n<nonce>\n<return>\n<consume>\n<ts>"))
+```
+
+The hub accepts it only when the signature matches, `ts` is within 5 minutes,
+and the URL is https with the same path as the registered `consume_url` and no
+query. Without the signature anyone could have the token for a user sent to
+their own domain. The site should only sign hosts it actually serves.
+
 ## Site side
 
 The site needs `AUTH_HUB_URL`, `AUTH_HUB_SITE` and `AUTH_HUB_SECRET`. Two routes:

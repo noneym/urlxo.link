@@ -205,6 +205,54 @@ class AuthHubTest extends TestCase
         $this->assertFalse(AuthSite::first()->active);
     }
 
+    private function signedStart(array $override = [], string $secret = 'site-secret'): \Illuminate\Testing\TestResponse
+    {
+        $params = $override + [
+            'site' => 'demo',
+            'nonce' => self::NONCE,
+            'return' => '/video/1',
+            'consume' => 'https://mirror42.example/auth/hub',
+            'ts' => (string) time(),
+        ];
+        $params['sig'] ??= Jwt::b64(hash_hmac('sha256', implode("\n", [$params['site'], $params['nonce'], $params['return'], $params['consume'], $params['ts']]), $secret, true));
+
+        return $this->get(self::HUB.'/start?'.http_build_query($params));
+    }
+
+    public function test_signed_consume_url_sends_the_user_back_to_the_domain_they_came_from(): void
+    {
+        $this->site(['signed_consume' => true]);
+        $toGoogle = $this->signedStart();
+        $toGoogle->assertRedirect();
+        parse_str(parse_url($toGoogle->headers->get('Location'), PHP_URL_QUERY), $googleQuery);
+        $this->fakeGoogle();
+
+        $toSite = $this->withCookie('hub_b', $toGoogle->getCookie('hub_b')->getValue())
+            ->get(self::HUB.'/callback?'.http_build_query(['state' => $googleQuery['state'], 'code' => 'abc']));
+
+        $this->assertStringStartsWith('https://mirror42.example/auth/hub?token=', $toSite->headers->get('Location'));
+    }
+
+    public function test_signed_consume_url_is_refused_when_it_cannot_be_trusted(): void
+    {
+        // Site not opted in.
+        $this->site();
+        $this->signedStart()->assertStatus(400);
+
+        AuthSite::first()->update(['signed_consume' => true]);
+        $this->signedStart([], 'wrong-secret')->assertStatus(400);                                  // forged
+        $this->signedStart(['ts' => (string) (time() - 600)])->assertStatus(400);                    // stale
+        $this->signedStart(['consume' => 'http://mirror42.example/auth/hub'])->assertStatus(400);    // not https
+        $this->signedStart(['consume' => 'https://mirror42.example/elsewhere'])->assertStatus(400);  // other path
+        $this->signedStart(['consume' => 'https://mirror42.example/auth/hub?x=1'])->assertStatus(400);
+
+        // A valid signature over one URL does not cover another.
+        $good = $this->signedStart()->headers->get('Location');
+        $this->assertStringStartsWith('https://accounts.google.com/', $good);
+        $sig = Jwt::b64(hash_hmac('sha256', implode("\n", ['demo', self::NONCE, '/video/1', 'https://mirror42.example/auth/hub', (string) time()]), 'site-secret', true));
+        $this->signedStart(['consume' => 'https://evil.example/auth/hub', 'sig' => $sig])->assertStatus(400);
+    }
+
     public function test_selftest_runs_the_whole_site_side_flow(): void
     {
         $this->get(self::HUB.'/selftest')->assertNotFound();

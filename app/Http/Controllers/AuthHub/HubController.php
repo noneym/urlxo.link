@@ -53,14 +53,25 @@ class HubController extends Controller
             return $this->fail('Sign-in is not configured yet.', 503);
         }
 
-        $browser = Str::random(40);
-        $state = $this->sign([
+        $data = [
             's' => $site->slug,
             'r' => $return,
             'n' => $nonce,
-            'b' => hash('sha256', $browser),
             'e' => time() + config('authhub.state_ttl'),
-        ]);
+        ];
+
+        // Sites served from many (rotating) domains send their own consume URL,
+        // signed with the site secret, instead of relying on the registered one.
+        if ($request->has('consume')) {
+            $consume = $this->signedConsumeUrl($request, $site, $nonce, (string) $request->query('return', '/'));
+            if (! $consume) {
+                return $this->fail('This sign-in link is invalid or has expired. Go back to the site and try again.', 400);
+            }
+            $data['c'] = $consume;
+        }
+
+        $browser = Str::random(40);
+        $state = $this->sign($data + ['b' => hash('sha256', $browser)]);
 
         $url = 'https://accounts.google.com/o/oauth2/v2/auth?'.http_build_query([
             'client_id' => config('authhub.google.client_id'),
@@ -95,9 +106,10 @@ class HubController extends Controller
         }
 
         $forget = Cookie::forget(self::BROWSER_COOKIE);
+        $consumeUrl = $state['c'] ?? $site->consume_url;
 
         if ($request->filled('error')) {
-            return redirect()->away($this->withQuery($site->consume_url, [
+            return redirect()->away($this->withQuery($consumeUrl, [
                 'error' => $request->query('error') === 'access_denied' ? 'access_denied' : 'google_error',
                 'return' => $state['r'],
             ]))->withCookie($forget);
@@ -130,7 +142,35 @@ class HubController extends Controller
         $site->forceFill(['last_login_at' => now()])->save();
         $site->increment('logins_count');
 
-        return redirect()->away($this->withQuery($site->consume_url, ['token' => $token]))->withCookie($forget);
+        return redirect()->away($this->withQuery($consumeUrl, ['token' => $token]))->withCookie($forget);
+    }
+
+    /**
+     * Checks a site-supplied consume URL: the site must allow it, the HMAC over
+     * site, nonce, return, consume and ts must match its secret, the link must be
+     * fresh, and the URL must be https with the registered path and no query.
+     */
+    private function signedConsumeUrl(Request $request, AuthSite $site, string $nonce, string $return): ?string
+    {
+        if (! $site->signed_consume) {
+            return null;
+        }
+
+        $consume = (string) $request->query('consume', '');
+        $ts = (string) $request->query('ts', '');
+        $sig = (string) $request->query('sig', '');
+
+        $parts = parse_url($consume);
+        if (! ctype_digit($ts) || abs(time() - (int) $ts) > 300 || strlen($consume) > 500
+            || ! $parts || strtolower($parts['scheme'] ?? '') !== 'https' || empty($parts['host'])
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['query']) || isset($parts['fragment'])
+            || ($parts['path'] ?? '/') !== (parse_url($site->consume_url, PHP_URL_PATH) ?: '/')) {
+            return null;
+        }
+
+        $expected = Jwt::b64(hash_hmac('sha256', implode("\n", [$site->slug, $nonce, $return, $consume, $ts]), $site->secret, true));
+
+        return hash_equals($expected, $sig) ? $consume : null;
     }
 
     /** Swaps the authorization code for Google's ID token claims. */

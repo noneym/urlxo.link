@@ -12,7 +12,9 @@ class AuthHubSite extends Command
         {action : list, add, update, rotate, enable, disable or remove}
         {slug? : Site id, e.g. onlycasting}
         {--url= : Consume URL on the site, e.g. https://example.com/auth/hub}
-        {--name= : Display name}';
+        {--name= : Display name}
+        {--signed : Accept consume URLs the site signs itself (sites on many rotating domains)}
+        {--unsigned : Only use the registered consume URL}';
 
     protected $description = 'Manage sites that sign in through the hub';
 
@@ -22,8 +24,8 @@ class AuthHubSite extends Command
         $slug = (string) $this->argument('slug');
 
         if ($action === 'list') {
-            $this->table(['slug', 'name', 'consume url', 'active', 'logins', 'last login'], AuthSite::orderBy('slug')->get()->map(fn (AuthSite $s) => [
-                $s->slug, $s->name, $s->consume_url, $s->active ? 'yes' : 'no', $s->logins_count, $s->last_login_at?->diffForHumans() ?? '-',
+            $this->table(['slug', 'name', 'consume url', 'signed', 'active', 'logins', 'last login'], AuthSite::orderBy('slug')->get()->map(fn (AuthSite $s) => [
+                $s->slug, $s->name, $s->consume_url, $s->signed_consume ? 'yes' : 'no', $s->active ? 'yes' : 'no', $s->logins_count, $s->last_login_at?->diffForHumans() ?? '-',
             ]));
 
             return self::SUCCESS;
@@ -36,7 +38,7 @@ class AuthHubSite extends Command
         }
 
         if ($action === 'add') {
-            $data = ['slug' => $slug, 'name' => $this->option('name') ?: $slug, 'consume_url' => (string) $this->option('url')];
+            $data = ['slug' => $slug, 'name' => $this->option('name') ?: $slug, 'consume_url' => (string) $this->option('url'), 'signed_consume' => (bool) $this->option('signed')];
             if (! $this->valid($data, AuthSite::rules())) {
                 return self::FAILURE;
             }
@@ -56,8 +58,11 @@ class AuthHubSite extends Command
         switch ($action) {
             case 'update':
                 $data = array_filter(['name' => $this->option('name'), 'consume_url' => $this->option('url')]);
+                if ($this->option('signed') || $this->option('unsigned')) {
+                    $data['signed_consume'] = (bool) $this->option('signed');
+                }
                 if (! $data || ! $this->valid($data, AuthSite::rules($site))) {
-                    $data || $this->error('Pass --url and/or --name.');
+                    $data || $this->error('Pass --url, --name, --signed or --unsigned.');
 
                     return self::FAILURE;
                 }

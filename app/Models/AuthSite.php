@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
  */
 class AuthSite extends Model
 {
-    protected $fillable = ['slug', 'name', 'consume_url', 'secret', 'active'];
+    protected $fillable = ['slug', 'name', 'consume_url', 'signed_consume', 'secret', 'active'];
 
     protected $hidden = ['secret'];
 
@@ -20,6 +20,7 @@ class AuthSite extends Model
         return [
             'secret' => 'encrypted',
             'active' => 'boolean',
+            'signed_consume' => 'boolean',
             'last_login_at' => 'datetime',
         ];
     }
@@ -43,6 +44,7 @@ class AuthSite extends Model
                 }
             }],
             'active' => ['sometimes', 'boolean'],
+            'signed_consume' => ['sometimes', 'boolean'],
         ];
     }
 
@@ -66,6 +68,7 @@ class AuthSite extends Model
             'name' => $this->name,
             'consume_url' => $this->consume_url,
             'active' => $this->active,
+            'signed_consume' => $this->signed_consume,
             'start_url' => 'https://'.config('authhub.domain').'/start?site='.$this->slug,
             'logins_count' => $this->logins_count,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
