@@ -12,6 +12,7 @@ URL shortener with click analytics and a REST API. Laravel 12, Livewire 3, Tailw
 - Dashboard: custom alias, title, password, expiry, click limit, pause/resume, QR code (SVG)
 - Click stats per link: daily chart, unique visitors, country (Cloudflare `CF-IPCountry`), referrer, device, browser, OS. Bots and link previews are not counted. No IP addresses are stored.
 - REST API at `/api/v1` with Sanctum Bearer keys, docs at `/docs`
+- Sign-in hub on `auth.urlxo.link`: one Google OAuth client gives "Sign in with Google" to any number of sites, see [docs/auth-hub.md](docs/auth-hub.md)
 
 ## How a redirect works
 
@@ -43,3 +44,5 @@ The `Dockerfile` builds a single FrankenPHP image that runs the web server and `
 Required environment: `APP_KEY`, `APP_URL=https://urlxo.link`, `SHORT_DOMAIN=urlxo.link`, `DB_*`, `REDIS_*`. Put Cloudflare in front of the domain so country stats work. For password reset e-mails set `MAIL_MAILER=cloudflare` with `CLOUDFLARE_EMAIL_ACCOUNT_ID` and `CLOUDFLARE_EMAIL_API_TOKEN`.
 
 Optional: `URLXO_GUEST_SHORTEN`, `URLXO_GUEST_PER_HOUR`, `URLXO_API_PER_MINUTE`, `URLXO_BLOCKED_HOSTS` (comma separated), `URLXO_REGISTRATION`, `URLXO_CODE_LENGTH`.
+
+Sign-in hub: `AUTH_HUB_DOMAIN` (default `auth.urlxo.link`, point it at the same service), `AUTH_HUB_GOOGLE_CLIENT_ID`, `AUTH_HUB_GOOGLE_CLIENT_SECRET`, `AUTH_HUB_ADMIN_TOKEN`.
