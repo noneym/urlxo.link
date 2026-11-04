@@ -232,6 +232,7 @@ disable the old secret.
 | `bunnyipcam` | noneym/bunnyIPCam, branch `hiddenPay` | laravel.bunnyipcam | mariadb-bunnyipcam | fixed: `https://bunnyipcam.com/auth/hub` |
 | `turkifsatube` | noneym/turkifsatube, `main` | laravel, laravel-2, laravel-subsite, laravel-subsite-2 (turkiftube) | mariadb-master-router-turkiftube | **signed**: any turkifsatube domain, path `/auth/hub` |
 | `pezotavsan` | noneym/turkifsatube, `main` | laravel.pezotavsan | mariadb-pezotavsan | **signed**: any pezotavsan domain, path `/auth/hub` |
+| `turkunlu` | noneym/bunnyIPCam, branch `turkunlu` | laravel.turkunlu | mariadb-turkunlu | **signed**: any turkunlu domain (primary turkunlu1.sbs), path `/auth/hub` |
 
 Each site's deployments carry `AUTH_HUB_URL`, `AUTH_HUB_SITE` and `AUTH_HUB_SECRET`.
 Deployments that share a database share one registration and secret.
@@ -239,7 +240,10 @@ Deployments that share a database share one registration and secret.
 Site code:
 - bunnyIPCam: `app/Http/Controllers/Auth/GoogleLoginController.php` and
   `resources/views/components/google-login.blade.php`. `main` (youtubekatil) has the same
-  code but no hub env, so the button is hidden there.
+  code but no hub env, so the button is hidden there. The `turkunlu` branch has the
+  same commits cherry-picked (the branches have diverged, never merge them) plus a
+  signed start that signs the request's `HTTP_HOST`; the site's own domain gates
+  (CheckReferer, RedirectToPrimaryDomain) have already accepted that host.
 - turkifsatube: same file names. The start link signs the current host; when
   the domain restriction setting is on, only hosts in the allowed-domains list
   (`AllowedReferer`) are signed, so a new mirror domain works as soon as it is
