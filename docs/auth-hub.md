@@ -193,3 +193,79 @@ class HubLoginController extends Controller
 ```
 
 Add a nullable unique `google_id` column to `users`.
+
+## Current setup (as of 2026-11-04)
+
+No secrets here: they live only in dockxo env and in the hub database.
+
+### Google
+
+| | |
+|---|---|
+| Google account | abuyousufsifan@gmail.com (also the Search Console owner of `sc-domain:urlxo.link`) |
+| Cloud project | `urlxo-auth` (separate from the google-mcp project, so a suspension here does not hit it) |
+| OAuth client | Web application `auth.urlxo.link`, client id `416408771125-vj88ohsi1b81mf1glse5efsko6cgrr84.apps.googleusercontent.com` |
+| Redirect URI | `https://auth.urlxo.link/callback` (the only one) |
+| Status | Published (In production), branding verified and published |
+| Scopes | `openid email profile` only |
+
+Rotating the client secret: Cloud Console → Clients → add secret, set
+`AUTH_HUB_GOOGLE_CLIENT_SECRET` on dockxo `urlxo-link.urlxo-link`, redeploy, then
+disable the old secret.
+
+### Hub deployment
+
+- dockxo service `urlxo-link.urlxo-link` (project urlxo.link), the same container as
+  the URL shortener. Domain `auth.urlxo.link` is routed to **port 80**: `add_domain`
+  defaults to the service port (3000) and that gives a 502.
+- DNS: Cloudflare, `auth.urlxo.link` A → 5.9.104.212, proxied.
+- Env: `AUTH_HUB_DOMAIN`, `AUTH_HUB_GOOGLE_CLIENT_ID`, `AUTH_HUB_GOOGLE_CLIENT_SECRET`,
+  `AUTH_HUB_ADMIN_TOKEN` (registry API), `AUTH_HUB_SELFTEST=true`.
+- Migrations run on container start (entrypoint), so hub schema changes deploy themselves.
+- Health check end to end: open https://auth.urlxo.link/selftest (site `selftest`).
+
+### Registered sites
+
+| slug | code | deployments (dockxo) | database | consume |
+|---|---|---|---|---|
+| `selftest` | this repo | urlxo-link.urlxo-link | hub DB | `https://auth.urlxo.link/selftest/consume` |
+| `bunnyipcam` | noneym/bunnyIPCam, branch `hiddenPay` | laravel.bunnyipcam | mariadb-bunnyipcam | fixed: `https://bunnyipcam.com/auth/hub` |
+| `turkifsatube` | noneym/turkifsatube, `main` | laravel, laravel-2, laravel-subsite, laravel-subsite-2 (turkiftube) | mariadb-master-router-turkiftube | **signed**: any turkifsatube domain, path `/auth/hub` |
+| `pezotavsan` | noneym/turkifsatube, `main` | laravel.pezotavsan | mariadb-pezotavsan | **signed**: any pezotavsan domain, path `/auth/hub` |
+
+Each site's deployments carry `AUTH_HUB_URL`, `AUTH_HUB_SITE` and `AUTH_HUB_SECRET`.
+Deployments that share a database share one registration and secret.
+
+Site code:
+- bunnyIPCam: `app/Http/Controllers/Auth/GoogleLoginController.php` and
+  `resources/views/components/google-login.blade.php`. `main` (youtubekatil) has the same
+  code but no hub env, so the button is hidden there.
+- turkifsatube: same file names. The start link signs the current host; when
+  the domain restriction setting is on, only hosts in the allowed-domains list
+  (`AllowedReferer`) are signed, so a new mirror domain works as soon as it is
+  added there.
+
+Behaviour on the sites:
+- Users are matched on the Google id (`users.google_id`).
+- An existing account is linked by e-mail only when Google reports the e-mail
+  as verified. After that it is only signed in: name, VIP and other fields are
+  untouched.
+- New accounts get a random `user_xxxxxxxx` username, never the Google name,
+  because usernames are public.
+- On turkifsatube the one-session rule (`auth_token`) applies as with password login.
+- The button stays hidden until `AUTH_HUB_SITE` and `AUTH_HUB_SECRET` are set and the
+  `users.google_id` column exists (checked every 5 minutes).
+
+### Adding another site
+
+1. Register: `POST /api/hub/sites` (add `"signed_consume": true` for multi-domain codebases)
+   or `php artisan authhub:site add <slug> --url=https://<domain>/auth/hub [--signed]`.
+   Keep the name ASCII when sending it with curl from Windows: a non-ASCII name arrived
+   as an empty body.
+2. Set the three `AUTH_HUB_*` env vars on every deployment that uses that database.
+3. Add the `google_id` column. bunnyIPCam and turkifsatube deploys do **not** run
+   migrations, so run only that one:
+   `php artisan migrate --force --path=database/migrations/2026_11_04_120000_add_google_id_to_users.php`
+   with the deployment's `DB_*` values in the environment. pezotavsan's database has
+   many old pending migrations that must not be run blindly.
+4. Wait up to 5 minutes for the button, then try a real sign-in.
