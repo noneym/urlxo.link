@@ -21,4 +21,7 @@ return [
 
     // Bearer token for the site registry API (/api/hub/sites). Empty disables it.
     'admin_token' => env('AUTH_HUB_ADMIN_TOKEN'),
+
+    // Enables /selftest, a built-in consumer for the `selftest` site.
+    'selftest' => (bool) env('AUTH_HUB_SELFTEST', false),
 ];

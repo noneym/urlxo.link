@@ -204,4 +204,28 @@ class AuthHubTest extends TestCase
         $this->artisan('authhub:site', ['action' => 'disable', 'slug' => 'demo'])->assertSuccessful();
         $this->assertFalse(AuthSite::first()->active);
     }
+
+    public function test_selftest_runs_the_whole_site_side_flow(): void
+    {
+        $this->get(self::HUB.'/selftest')->assertNotFound();
+
+        config(['authhub.selftest' => true]);
+        $this->site(['slug' => 'selftest', 'consume_url' => self::HUB.'/selftest/consume']);
+
+        $toHub = $this->get(self::HUB.'/selftest');
+        parse_str(parse_url($toHub->headers->get('Location'), PHP_URL_QUERY), $startQuery);
+        $this->assertSame('selftest', $startQuery['site']);
+
+        $toGoogle = $this->get(self::HUB.'/start?'.http_build_query($startQuery));
+        parse_str(parse_url($toGoogle->headers->get('Location'), PHP_URL_QUERY), $googleQuery);
+        $this->fakeGoogle();
+
+        $toSite = $this->withCookie('hub_b', $toGoogle->getCookie('hub_b')->getValue())
+            ->get(self::HUB.'/callback?'.http_build_query(['state' => $googleQuery['state'], 'code' => 'abc']));
+
+        $this->get($toSite->headers->get('Location'))
+            ->assertOk()
+            ->assertSee('The hub works.')
+            ->assertSee('ayse@example.com');
+    }
 }

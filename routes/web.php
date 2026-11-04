@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuthHub\HubController;
+use App\Http\Controllers\AuthHub\SelfTestController;
 use App\Http\Controllers\RedirectController;
 use App\Livewire\Account\Settings as AccountSettings;
 use App\Livewire\Auth\ForgotPassword;
@@ -18,6 +19,8 @@ Route::domain(config('authhub.domain'))->group(function () {
     Route::get('/', [HubController::class, 'home'])->name('authhub.home');
     Route::get('/start', [HubController::class, 'start'])->middleware('throttle:60,1')->name('authhub.start');
     Route::get('/callback', [HubController::class, 'callback'])->middleware('throttle:60,1')->name('authhub.callback');
+    Route::get('/selftest', [SelfTestController::class, 'start'])->middleware('throttle:20,1');
+    Route::get('/selftest/consume', [SelfTestController::class, 'consume'])->middleware('throttle:20,1');
     Route::get('/{any}', [HubController::class, 'missing'])->where('any', '^(?!api/|up$).*');
 });
 
